@@ -14,6 +14,12 @@ return [
     |
     */
 
+    'thesportsdb' => [
+        'base_url' => env('THESPORTSDB_BASE_URL', 'https://www.thesportsdb.com/api/v1/json'),
+        'api_key' => env('THESPORTSDB_API_KEY', '3'),
+        'liga1_league_id' => env('THESPORTSDB_LIGA1_LEAGUE_ID', '4691'),
+    ],
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
