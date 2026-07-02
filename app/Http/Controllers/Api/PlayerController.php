@@ -9,9 +9,45 @@ use Illuminate\Http\Response;
 
 class PlayerController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $players = Player::with('team')->get();
+        $validatedFilters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'age_after' => ['nullable', 'integer', 'min:5', 'max:99'],
+            'age_before' => ['nullable', 'integer', 'min:5', 'max:99'],
+            'sort_by' => ['nullable', 'string', 'in:last_name,first_name,team_id,position,age,nationality,created_at'],
+            'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
+        ]);
+
+        $search = $validatedFilters['search'] ?? null;
+        $ageAfter = $validatedFilters['age_after'] ?? null;
+        $ageBefore = $validatedFilters['age_before'] ?? null;
+
+        $sortBy = $validatedFilters['sort_by'] ?? 'created_at';
+        $sortDirection = $validatedFilters['sort_direction'] ?? 'desc';
+
+        $query = Player::with('team');
+
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('first_name', 'ilike', '%' . $search . '%')
+                    ->orWhere('last_name', 'ilike', '%' . $search . '%')
+                    ->orWhere('position', 'ilike', '%' . $search . '%')
+                    ->orWhere('nationality', 'ilike', '%' . $search . '%');
+            });
+        }
+
+        if ($ageAfter) {
+            $query->where('age', '>=', $ageAfter);
+        }
+
+        if ($ageBefore) {
+            $query->where('age', '<=', $ageBefore);
+        }
+
+        $query->orderBy($sortBy, $sortDirection);
+
+        $players = $query->get();
 
         return response()->json($players);
     }
