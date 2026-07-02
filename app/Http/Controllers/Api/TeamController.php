@@ -12,7 +12,16 @@ class TeamController extends Controller
     public function index(Request $request)
     {
 
-        $search = $request->query('search');
+        $validatedFilters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'founded_after' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
+            'founded_before' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
+        ]);
+
+        $search = $validatedFilters['search'] ?? null;
+        $foundedAfter = $validatedFilters['founded_after'] ?? null;
+        $foundedBefore = $validatedFilters['founded_before'] ?? null;
+
         $query = Team::with('players');
 
         if($search) {
@@ -21,6 +30,14 @@ class TeamController extends Controller
                     ->orWhere('city', 'like', '%' . $search . '%')
                     ->orWhere('stadium', 'like', '%' . $search . '%');
             });
+        }
+
+        if ($foundedAfter) {
+            $query->where('founded_year', '>=', $foundedAfter);
+        }
+
+        if ($foundedBefore) {
+            $query->where('founded_year', '<=', $foundedBefore);
         }
 
         $teams = $query->get();
