@@ -31,9 +31,9 @@ class TeamController extends Controller
 
         if ($search) {
             $query->where(function ($query) use ($search) {
-                $query->where('name', 'ilike', '%' . $search . '%')
-                    ->orWhere('city', 'ilike', '%' . $search . '%')
-                    ->orWhere('stadium', 'ilike', '%' . $search . '%');
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('city', 'like', '%' . $search . '%')
+                    ->orWhere('stadium', 'like', '%' . $search . '%');
             });
         }
 
