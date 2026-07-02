@@ -9,9 +9,45 @@ use Illuminate\Http\Response;
 
 class TeamController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $teams = Team::with('players')->get();
+        $validatedFilters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'founded_after' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
+            'founded_before' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
+
+            'sort_by' => ['nullable', 'string', 'in:name,city,stadium,founded_year,created_at'],
+            'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
+        ]);
+
+        $search = $validatedFilters['search'] ?? null;
+        $foundedAfter = $validatedFilters['founded_after'] ?? null;
+        $foundedBefore = $validatedFilters['founded_before'] ?? null;
+
+        $sortBy = $validatedFilters['sort_by'] ?? 'created_at';
+        $sortDirection = $validatedFilters['sort_direction'] ?? 'desc';
+
+        $query = Team::with('players');
+
+        if ($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('name', 'ilike', '%' . $search . '%')
+                    ->orWhere('city', 'ilike', '%' . $search . '%')
+                    ->orWhere('stadium', 'ilike', '%' . $search . '%');
+            });
+        }
+
+        if ($foundedAfter) {
+            $query->where('founded_year', '>=', $foundedAfter);
+        }
+
+        if ($foundedBefore) {
+            $query->where('founded_year', '<=', $foundedBefore);
+        }
+
+        $query->orderBy($sortBy, $sortDirection);
+
+        $teams = $query->get();
 
         return response()->json($teams);
     }
