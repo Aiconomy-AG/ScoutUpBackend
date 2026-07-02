@@ -9,9 +9,21 @@ use Illuminate\Http\Response;
 
 class TeamController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $teams = Team::with('players')->get();
+
+        $search = $request->query('search');
+        $query = Team::with('players');
+
+        if($search) {
+            $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('city', 'like', '%' . $search . '%')
+                    ->orWhere('stadium', 'like', '%' . $search . '%');
+            });
+        }
+
+        $teams = $query->get();
 
         return response()->json($teams);
     }
