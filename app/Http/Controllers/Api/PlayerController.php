@@ -30,10 +30,10 @@ class PlayerController extends Controller
 
         if ($search) {
             $query->where(function ($query) use ($search) {
-                $query->where('first_name', 'ilike', '%' . $search . '%')
-                    ->orWhere('last_name', 'ilike', '%' . $search . '%')
-                    ->orWhere('position', 'ilike', '%' . $search . '%')
-                    ->orWhere('nationality', 'ilike', '%' . $search . '%');
+                $query->where('first_name', 'like', '%' . $search . '%')
+                    ->orWhere('last_name', 'like', '%' . $search . '%')
+                    ->orWhere('position', 'like', '%' . $search . '%')
+                    ->orWhere('nationality', 'like', '%' . $search . '%');
             });
         }
 
