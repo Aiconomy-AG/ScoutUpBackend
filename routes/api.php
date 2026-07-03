@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Services\TheSportsDbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Support\FootballPositions;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -73,12 +74,11 @@ Route::middleware('auth:sanctum')->group(function () {
             }
 
             $team = Team::updateOrCreate(
-                [
-                    'name' => $externalTeam['strTeam'],
-                ],
+                ['name' => $externalTeam['strTeam']],
                 [
                     'city' => $externalTeam['strLocation'] ?? null,
                     'stadium' => $externalTeam['strStadium'] ?? null,
+                    'league' => $externalTeam['strLeague'] ?? null,
                     'founded_year' => $foundedYear ? (int) $foundedYear : null,
                 ]
             );
@@ -126,7 +126,10 @@ Route::middleware('auth:sanctum')->group(function () {
                     'team_id' => $validatedData['team_id'],
                 ],
                 [
-                    'position' => $externalPlayer['strPosition'] ?? 'Unknown',
+                    'position' => FootballPositions::normalizeOrDefault(
+                        $externalPlayer['strPosition'] ?? null,
+                        'CM'
+                    ),
                     'age' => $age,
                     'nationality' => $externalPlayer['strNationality'] ?? null,
                 ]

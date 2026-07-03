@@ -7,6 +7,7 @@ use App\Models\Team;
 use App\Services\TheSportsDbService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use App\Support\FootballPositions;
 
 class ImportLiga1FromTheSportsDb extends Command
 {
@@ -17,6 +18,7 @@ class ImportLiga1FromTheSportsDb extends Command
     public function handle(TheSportsDbService $service): int
     {
         $leagueId = config('services.thesportsdb.liga1_league_id', '4691');
+        $leagueName = config('services.thesportsdb.liga1_league_name', 'Liga 1 Romania');
 
         $this->info("Importing league ID: {$leagueId}");
 
