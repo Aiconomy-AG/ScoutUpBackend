@@ -26,12 +26,9 @@ class AuthController extends Controller
             'role' => 'user',
         ]);
 
-        $token = $user->createToken('frontend-token')->plainTextToken;
-
         return response()->json([
-            'message' => 'User registered successfully.',
+            'message' => 'User registered successfully. Please login.',
             'user' => $user,
-            'token' => $token,
         ], Response::HTTP_CREATED);
     }
 
