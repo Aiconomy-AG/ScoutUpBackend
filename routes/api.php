@@ -11,6 +11,7 @@ use App\Services\TheSportsDbService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Support\FootballPositions;
+use App\Http\Controllers\Api\SquadController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -18,10 +19,13 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::apiResource('squads', SquadController::class);
+    Route::apiResource('teams', TeamController::class)->only(['index', 'show']);
+    Route::apiResource('players', PlayerController::class)->only(['index', 'show']);
 
     Route::middleware(EnsureAdmin::class)->group(function () {
-        Route::apiResource('teams', TeamController::class);
-        Route::apiResource('players', PlayerController::class);
+        Route::apiResource('teams', TeamController::class)->except(['index', 'show']);
+        Route::apiResource('players', PlayerController::class)->except(['index', 'show']);
         Route::apiResource('users', UserController::class);
 
         Route::get('/external/teams/search', function (TheSportsDbService $service) {
