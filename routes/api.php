@@ -1,128 +1,142 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PlayerController;
 use App\Http\Controllers\Api\TeamController;
-use Illuminate\Http\Request;
-use App\Services\TheSportsDbService;
-use App\Models\Team;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Middleware\EnsureAdmin;
 use App\Models\Player;
+use App\Models\Team;
+use App\Services\TheSportsDbService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
-Route::apiResource('teams', TeamController::class);
-Route::apiResource('players', PlayerController::class);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
 
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::get('/external/teams/search', function (TheSportsDbService $service) {
-    $teamName = request('name');
+    Route::middleware(EnsureAdmin::class)->group(function () {
+        Route::apiResource('teams', TeamController::class);
+        Route::apiResource('players', PlayerController::class);
+        Route::apiResource('users', UserController::class);
 
-    if (!$teamName) {
-        return response()->json([
-            'message' => 'Query parameter "name" is required.',
-        ], 422);
-    }
+        Route::get('/external/teams/search', function (TheSportsDbService $service) {
+            $teamName = request('name');
 
-    return response()->json(
-        $service->searchTeams($teamName)
-    );
-});
+            if (!$teamName) {
+                return response()->json([
+                    'message' => 'Query parameter "name" is required.',
+                ], 422);
+            }
 
-Route::get('/external/players/search', function (TheSportsDbService $service) {
-    $playerName = request('name');
+            return response()->json(
+                $service->searchTeams($teamName)
+            );
+        });
 
-    if (!$playerName) {
-        return response()->json([
-            'message' => 'Query parameter "name" is required.',
-        ], 422);
-    }
+        Route::get('/external/players/search', function (TheSportsDbService $service) {
+            $playerName = request('name');
 
-    return response()->json(
-        $service->searchPlayers($playerName)
-    );
-});
+            if (!$playerName) {
+                return response()->json([
+                    'message' => 'Query parameter "name" is required.',
+                ], 422);
+            }
 
-Route::post('/external/teams/import', function (Request $request, TheSportsDbService $service) {
-    $validatedData = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-    ]);
+            return response()->json(
+                $service->searchPlayers($playerName)
+            );
+        });
 
-    $response = $service->searchTeams($validatedData['name']);
+        Route::post('/external/teams/import', function (Request $request, TheSportsDbService $service) {
+            $validatedData = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+            ]);
 
-    $externalTeam = $response['teams'][0] ?? null;
+            $response = $service->searchTeams($validatedData['name']);
 
-    if (!$externalTeam) {
-        return response()->json([
-            'message' => 'No team found with this name.',
-        ], 404);
-    }
+            $externalTeam = $response['teams'][0] ?? null;
 
-    $foundedYear = $externalTeam['intFormedYear'] ?? null;
+            if (!$externalTeam) {
+                return response()->json([
+                    'message' => 'No team found with this name.',
+                ], 404);
+            }
 
-    if ($foundedYear !== null && !is_numeric($foundedYear)) {
-        $foundedYear = null;
-    }
+            $foundedYear = $externalTeam['intFormedYear'] ?? null;
 
-    $team = Team::updateOrCreate(
-        [
-            'name' => $externalTeam['strTeam'],
-        ],
-        [
-            'city' => $externalTeam['strLocation'] ?? null,
-            'stadium' => $externalTeam['strStadium'] ?? null,
-            'founded_year' => $foundedYear ? (int) $foundedYear : null,
-        ]
-    );
+            if ($foundedYear !== null && !is_numeric($foundedYear)) {
+                $foundedYear = null;
+            }
 
-    return response()->json([
-        'message' => 'Team imported successfully.',
-        'team' => $team,
-        'external_data' => $externalTeam,
-    ], 201);
-});
+            $team = Team::updateOrCreate(
+                [
+                    'name' => $externalTeam['strTeam'],
+                ],
+                [
+                    'city' => $externalTeam['strLocation'] ?? null,
+                    'stadium' => $externalTeam['strStadium'] ?? null,
+                    'founded_year' => $foundedYear ? (int) $foundedYear : null,
+                ]
+            );
 
-Route::post('/external/players/import', function (Request $request, TheSportsDbService $service) {
-    $validatedData = $request->validate([
-        'name' => ['required', 'string', 'max:255'],
-        'team_id' => ['required', 'integer', 'exists:teams,id'],
-    ]);
+            return response()->json([
+                'message' => 'Team imported successfully.',
+                'team' => $team,
+                'external_data' => $externalTeam,
+            ], 201);
+        });
 
-    $response = $service->searchPlayers($validatedData['name']);
+        Route::post('/external/players/import', function (Request $request, TheSportsDbService $service) {
+            $validatedData = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'team_id' => ['required', 'integer', 'exists:teams,id'],
+            ]);
 
-    $externalPlayer = $response['player'][0] ?? null;
+            $response = $service->searchPlayers($validatedData['name']);
 
-    if (!$externalPlayer) {
-        return response()->json([
-            'message' => 'No player found with this name.',
-        ], 404);
-    }
+            $externalPlayer = $response['player'][0] ?? null;
 
-    $fullName = $externalPlayer['strPlayer'] ?? $validatedData['name'];
+            if (!$externalPlayer) {
+                return response()->json([
+                    'message' => 'No player found with this name.',
+                ], 404);
+            }
 
-    $nameParts = explode(' ', trim($fullName), 2);
+            $fullName = $externalPlayer['strPlayer'] ?? $validatedData['name'];
 
-    $firstName = $nameParts[0] ?? $fullName;
-    $lastName = $nameParts[1] ?? '';
+            $nameParts = explode(' ', trim($fullName), 2);
 
-    $age = null;
+            $firstName = $nameParts[0] ?? $fullName;
+            $lastName = $nameParts[1] ?? '';
 
-    if (!empty($externalPlayer['dateBorn'])) {
-        $age = \Carbon\Carbon::parse($externalPlayer['dateBorn'])->age;
-    }
+            $age = null;
 
-    $player = Player::updateOrCreate(
-        [
-            'first_name' => $firstName,
-            'last_name' => $lastName,
-            'team_id' => $validatedData['team_id'],
-        ],
-        [
-            'position' => $externalPlayer['strPosition'] ?? 'Unknown',
-            'age' => $age,
-            'nationality' => $externalPlayer['strNationality'] ?? null,
-        ]
-    );
+            if (!empty($externalPlayer['dateBorn'])) {
+                $age = \Carbon\Carbon::parse($externalPlayer['dateBorn'])->age;
+            }
 
-    return response()->json([
-        'message' => 'Player imported successfully.',
-        'player' => $player,
-        'external_data' => $externalPlayer,
-    ], 201);
+            $player = Player::updateOrCreate(
+                [
+                    'first_name' => $firstName,
+                    'last_name' => $lastName,
+                    'team_id' => $validatedData['team_id'],
+                ],
+                [
+                    'position' => $externalPlayer['strPosition'] ?? 'Unknown',
+                    'age' => $age,
+                    'nationality' => $externalPlayer['strNationality'] ?? null,
+                ]
+            );
+
+            return response()->json([
+                'message' => 'Player imported successfully.',
+                'player' => $player,
+                'external_data' => $externalPlayer,
+            ], 201);
+        });
+    });
 });
