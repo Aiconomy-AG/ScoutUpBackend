@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 
 class TeamController extends Controller
 {
@@ -13,28 +14,35 @@ class TeamController extends Controller
     {
         $validatedFilters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'league' => ['nullable', 'string', 'max:255'],
             'founded_after' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
             'founded_before' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
-
-            'sort_by' => ['nullable', 'string', 'in:name,city,stadium,founded_year,created_at'],
+            'sort_by' => ['nullable', 'string', 'in:name,city,stadium,league,founded_year,created_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
         $search = $validatedFilters['search'] ?? null;
+        $league = $validatedFilters['league'] ?? null;
         $foundedAfter = $validatedFilters['founded_after'] ?? null;
         $foundedBefore = $validatedFilters['founded_before'] ?? null;
-
         $sortBy = $validatedFilters['sort_by'] ?? 'created_at';
         $sortDirection = $validatedFilters['sort_direction'] ?? 'desc';
+
+        $likeOperator = DB::connection()->getDriverName() === 'pgsql' ? 'ilike' : 'like';
 
         $query = Team::with('players');
 
         if ($search) {
-            $query->where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('city', 'like', '%' . $search . '%')
-                    ->orWhere('stadium', 'like', '%' . $search . '%');
+            $query->where(function ($query) use ($search, $likeOperator) {
+                $query->where('name', $likeOperator, '%' . $search . '%')
+                    ->orWhere('city', $likeOperator, '%' . $search . '%')
+                    ->orWhere('stadium', $likeOperator, '%' . $search . '%')
+                    ->orWhere('league', $likeOperator, '%' . $search . '%');
             });
+        }
+
+        if ($league) {
+            $query->where('league', $likeOperator, '%' . $league . '%');
         }
 
         if ($foundedAfter) {
@@ -47,9 +55,7 @@ class TeamController extends Controller
 
         $query->orderBy($sortBy, $sortDirection);
 
-        $teams = $query->get();
-
-        return response()->json($teams);
+        return response()->json($query->get());
     }
 
     public function store(Request $request)
@@ -58,6 +64,7 @@ class TeamController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'stadium' => ['nullable', 'string', 'max:255'],
+            'league' => ['nullable', 'string', 'max:255'],
             'founded_year' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
         ]);
 
@@ -79,6 +86,7 @@ class TeamController extends Controller
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'stadium' => ['nullable', 'string', 'max:255'],
+            'league' => ['nullable', 'string', 'max:255'],
             'founded_year' => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
         ]);
 

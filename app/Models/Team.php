@@ -11,6 +11,7 @@ class Team extends Model
         'name',
         'city',
         'stadium',
+        'league',
         'founded_year',
     ];
 
